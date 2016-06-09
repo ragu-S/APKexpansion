@@ -9,13 +9,6 @@
     <license>Apache 2.0</license>
     <keywords>cordova,apk,expansion,file,xapk,xapkreader</keywords>
 
-    <preference name="MAIN_VERSION" />
-    <preference name="PATCH_VERSION" />
-    <preference name="MAIN_FILESIZE" />
-    <preference name="PATCH_FILESIZE" />
-    <preference name="YOUR_PUBLICKEY" />
-    <preference name="DOWNLOAD_OPTION" />
-
     <js-module src="www/xapkreader.js" name="XAPKReader">
         <clobbers target="XAPKReader" />
     </js-module>
