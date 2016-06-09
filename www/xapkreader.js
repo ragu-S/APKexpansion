@@ -1,3 +1,4 @@
+cordova.define("com.intel.xapkreader.XAPKReader", function(require, exports, module) {
 var exec = require("cordova/exec");
 var getQueue = [];
 var inProgress = 0;
@@ -51,7 +52,17 @@ module.exports = {
             this.getImmediate(e.filename, e.successCallback, e.errorCallBack, e.fileType);      
         }
     },
+    /**
+     * writeExpansionFileList
+    **/
+    setExpansionOptions: function(expansionInfo, successCallback, errorCallback) {
+        // only for android
+        if (!navigator.userAgent.match(/Android/i)) {
+            return errorCallBack("Not android");
+        }
 
+        cordova.exec(successCallback, errorCallback, "XAPKReader", "setExpansionOptions", [expansionInfo]);
+    },
     /**
      * Get a file in expansion file and return it as data base64 encoded
      *
@@ -78,7 +89,28 @@ module.exports = {
         
         this.processQueue();
     },
-    
+    /**
+      * Gets packageInfo for Expansion file
+    **/
+    getPackageInfo: function(successCallback, errorCallback) {
+        // only for android
+        if (!navigator.userAgent.match(/Android/i)) {
+            return errorCallBack("Not android");
+        }
+
+        cordova.exec(successCallback, errorCallback, "XAPKReader", "getPackageInfo", []);
+    },
+    /**
+     * writeExpansionFileList
+    **/
+    writeExpansionFileList: function(successCallback, errorCallback) {
+        // only for android
+        if (!navigator.userAgent.match(/Android/i)) {
+            return errorCallBack("Not android");
+        }
+
+        cordova.exec(successCallback, errorCallback, "XAPKReader", "writeExpansionFileList", []);
+    },
     /**
      * Progress queue termination of 10 gets
      **/
@@ -87,7 +119,6 @@ module.exports = {
         inProgress = inProgress - 1;
         this.processQueue();  
     },
-
     /**
      * Convert ArrayBuffer to URL
      *
@@ -133,3 +164,4 @@ module.exports = {
     }
 
 };
+});
