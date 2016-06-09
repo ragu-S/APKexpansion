@@ -1,9 +1,13 @@
 package org.apache.cordova.xapkreader;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Base64;
 import android.util.Log;
 
@@ -12,17 +16,22 @@ import com.android.vending.expansion.zipfile.ZipResourceFile;
 import com.google.android.vending.expansion.downloader.Helpers;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
 
-import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
-import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
+
+import java.util.ArrayList;
+
+import org.json.JSONObject;
+
 
 public class XAPKReader extends CordovaPlugin {
 
@@ -98,6 +107,73 @@ public class XAPKReader extends CordovaPlugin {
                     catch(Exception e) {
                         e.printStackTrace();
                         callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
+        else if(action.equals("getPackageInfo")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    Activity appActivity = cordova.getActivity();
+                    try {
+                        PackageInfo pmInfo = appActivity.getPackageManager().getPackageInfo(appActivity.getPackageName(), 0);
+                        String versionName = pmInfo.versionName;
+                        int versionCode = pmInfo.versionCode;
+                        JSONObject packageInfo = new JSONObject();
+                        packageInfo.put("versionName", versionName);
+                        packageInfo.put("versionCode", versionCode);
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, packageInfo);
+                        callbackContext.sendPluginResult(result);
+                    }
+                    catch (PackageManager.NameNotFoundException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                    catch (JSONException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
+        else if(action.equals("writeExpansionFileList")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        Context ctx = cordova.getActivity().getApplicationContext();
+                        ZipResourceFile expansionFile = APKExpansionSupport.getAPKExpansionZipFile(ctx, mainVersion, patchVersion);
+
+                        if (null == expansionFile) {
+                            Log.e(LOG_TAG, "APKExpansionFile not found.");
+                            Activity appActivity = cordova.getActivity();
+                            PackageInfo pmInfo = appActivity.getPackageManager().getPackageInfo(appActivity.getPackageName(), 0);
+                            String versionName = pmInfo.versionName;
+                            int versionCode = pmInfo.versionCode;
+                            JSONObject packageInfo = new JSONObject();
+                            packageInfo.put("versionName", versionName);
+                            packageInfo.put("versionCode", versionCode);
+                            PluginResult result = new PluginResult(PluginResult.Status.OK, packageInfo);
+                            callbackContext.sendPluginResult(result);
+//                            callbackContext.error("APKExpansionFile not found.");
+                            return;
+                        }
+
+                        ZipResourceFile.ZipEntryRO[] allFiles = expansionFile.getAllEntries();
+                        ArrayList list = new ArrayList();
+                        for (ZipResourceFile.ZipEntryRO entry : allFiles) list.add(entry.mFileName);
+
+                        String _filename = "EXPANSION_FILENAMES.json";
+                        File file = new File(Environment.getExternalStorageDirectory(), _filename);
+                        String _string = list.toString();
+                        FileOutputStream outputStream = new FileOutputStream(file);
+                        outputStream.write(_string.getBytes());
+                        outputStream.close();
+
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, file.getAbsolutePath());
+                        callbackContext.sendPluginResult(result);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             });
