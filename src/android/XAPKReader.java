@@ -65,38 +65,44 @@ public class XAPKReader extends CordovaPlugin {
      * @sa https://github.com/apache/cordova-android/blob/master/framework/src/org/apache/cordova/CordovaPlugin.java
      */
     @Override
-    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-
-        // int downloadOptionId = cordova.getActivity().getResources().getIdentifier("download_option", "bool", cordova.getActivity().getPackageName());
-        // downloadOption = cordova.getActivity().getResources().getBoolean(downloadOptionId);
-
-        // int mainversionCodeId = cordova.getActivity().getResources().getIdentifier("main_version", "integer", cordova.getActivity().getPackageName());
-        // mainVersion = cordova.getActivity().getResources().getInteger(mainversionCodeId);
-
-        // int mainFileSizeId = cordova.getActivity().getResources().getIdentifier("main_filesize", "integer", cordova.getActivity().getPackageName());
-        // mainFileSize = cordova.getActivity().getResources().getInteger(mainFileSizeId);
-
-        // //This is where the error may occur.
-        // int patchVersionCodeId = cordova.getActivity().getResources().getIdentifier("patch_version", "integer", cordova.getActivity().getPackageName());
-        // patchVersion = cordova.getActivity().getResources().getInteger(patchVersionCodeId);
-
-        // int patchFileSizeId = cordova.getActivity().getResources().getIdentifier("patch_filesize", "integer", cordova.getActivity().getPackageName());
-        // patchFileSize = cordova.getActivity().getResources().getInteger(patchFileSizeId);
-	JSONObject expansionInfo = args.getJSONObject(0);
-        mainVersion = expansionInfo.getInt("mainVersion");
-        patchVersion = expansionInfo.getInt("patchVersion");
-        mainFileSize = expansionInfo.getLong("mainFileSize");
-        patchFileSize = expansionInfo.getLong("patchFileSize");
-        downloadOption = expansionInfo.getBoolean("downloadOption");
-        
+    public boolean execute(String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
         final Bundle bundle = new Bundle();
+
+        // set defaults
         bundle.putInt("mainVersion", mainVersion);
         bundle.putInt("patchVersion", patchVersion);
         bundle.putLong("mainFileSize", mainFileSize);
         bundle.putLong("patchFileSize", patchFileSize);
         bundle.putBoolean("downloadOption", downloadOption);
 
-        if (action.equals("get")) {
+        if (action.equals("setExpansionOptions")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        JSONObject expansionInfo = args.getJSONObject(0);
+                        mainVersion = expansionInfo.getInt("mainVersion");
+                        patchVersion = expansionInfo.getInt("patchVersion");
+                        mainFileSize = expansionInfo.getLong("mainFileSize");
+                        patchFileSize = expansionInfo.getLong("patchFileSize");
+                        downloadOption = expansionInfo.getBoolean("downloadOption");
+
+                        bundle.putInt("mainVersion", mainVersion);
+                        bundle.putInt("patchVersion", patchVersion);
+                        bundle.putLong("mainFileSize", mainFileSize);
+                        bundle.putLong("patchFileSize", patchFileSize);
+                        bundle.putBoolean("downloadOption", downloadOption);
+
+                        callbackContext.success("success");
+                    }
+                    catch (JSONException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+
+            return true;
+        }
+        else if (action.equals("get")) {
             final String filename = args.getString(0);
             final Context ctx = cordova.getActivity().getApplicationContext();     
             cordova.getThreadPool().execute(new Runnable() {
