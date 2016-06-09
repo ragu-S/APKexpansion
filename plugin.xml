@@ -18,7 +18,9 @@
         <framework src="AndroidLibrary/GoogleExtras/play_licensing/library" custom="true" />
         <framework src="AndroidLibrary/GoogleExtras/play_apk_expansion/downloader_library" custom="true"/>
         <framework src="AndroidLibrary/GoogleExtras/play_apk_expansion/zip_file" custom="true" />
-
+        
+        <preference name="YOUR_PUBLICKEY" />
+        
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="XAPKReader">
                 <param name="android-package" value="org.apache.cordova.xapkreader.XAPKReader"/>
@@ -28,12 +30,7 @@
 
         <source-file src="src/android/res/values/xapkreader.xml" target-dir="res/values" />
         <config-file target="res/values/xapkreader.xml" parent="/*">
-            <integer name="main_version">$MAIN_VERSION</integer>
-            <integer name="patch_version">$PATCH_VERSION</integer>
-            <integer name="main_filesize">$MAIN_FILESIZE</integer>
-            <integer name="patch_filesize">$PATCH_FILESIZE</integer>
             <string name="your_publickey">$YOUR_PUBLICKEY</string>
-            <bool name="download_option">$DOWNLOAD_OPTION</bool>
         </config-file>
 
         <source-file src="src/android/XAPKReader.java" target-dir="src/org/apache/cordova/xapkreader" />
