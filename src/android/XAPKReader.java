@@ -67,22 +67,28 @@ public class XAPKReader extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
 
-        int downloadOptionId = cordova.getActivity().getResources().getIdentifier("download_option", "bool", cordova.getActivity().getPackageName());
-        downloadOption = cordova.getActivity().getResources().getBoolean(downloadOptionId);
+        // int downloadOptionId = cordova.getActivity().getResources().getIdentifier("download_option", "bool", cordova.getActivity().getPackageName());
+        // downloadOption = cordova.getActivity().getResources().getBoolean(downloadOptionId);
 
-        int mainversionCodeId = cordova.getActivity().getResources().getIdentifier("main_version", "integer", cordova.getActivity().getPackageName());
-        mainVersion = cordova.getActivity().getResources().getInteger(mainversionCodeId);
+        // int mainversionCodeId = cordova.getActivity().getResources().getIdentifier("main_version", "integer", cordova.getActivity().getPackageName());
+        // mainVersion = cordova.getActivity().getResources().getInteger(mainversionCodeId);
 
-        int mainFileSizeId = cordova.getActivity().getResources().getIdentifier("main_filesize", "integer", cordova.getActivity().getPackageName());
-        mainFileSize = cordova.getActivity().getResources().getInteger(mainFileSizeId);
+        // int mainFileSizeId = cordova.getActivity().getResources().getIdentifier("main_filesize", "integer", cordova.getActivity().getPackageName());
+        // mainFileSize = cordova.getActivity().getResources().getInteger(mainFileSizeId);
 
-        //This is where the error may occur.
-        int patchVersionCodeId = cordova.getActivity().getResources().getIdentifier("patch_version", "integer", cordova.getActivity().getPackageName());
-        patchVersion = cordova.getActivity().getResources().getInteger(patchVersionCodeId);
+        // //This is where the error may occur.
+        // int patchVersionCodeId = cordova.getActivity().getResources().getIdentifier("patch_version", "integer", cordova.getActivity().getPackageName());
+        // patchVersion = cordova.getActivity().getResources().getInteger(patchVersionCodeId);
 
-        int patchFileSizeId = cordova.getActivity().getResources().getIdentifier("patch_filesize", "integer", cordova.getActivity().getPackageName());
-        patchFileSize = cordova.getActivity().getResources().getInteger(patchFileSizeId);
-
+        // int patchFileSizeId = cordova.getActivity().getResources().getIdentifier("patch_filesize", "integer", cordova.getActivity().getPackageName());
+        // patchFileSize = cordova.getActivity().getResources().getInteger(patchFileSizeId);
+	JSONObject expansionInfo = args.getJSONObject(0);
+        mainVersion = expansionInfo.getInt("mainVersion");
+        patchVersion = expansionInfo.getInt("patchVersion");
+        mainFileSize = expansionInfo.getLong("mainFileSize");
+        patchFileSize = expansionInfo.getLong("patchFileSize");
+        downloadOption = expansionInfo.getBoolean("downloadOption");
+        
         final Bundle bundle = new Bundle();
         bundle.putInt("mainVersion", mainVersion);
         bundle.putInt("patchVersion", patchVersion);
