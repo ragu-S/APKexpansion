@@ -124,6 +124,39 @@ public class XAPKReader extends CordovaPlugin {
             });
             return true;
         }
+        else if(action.equals("getExpansionFileList")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        Context ctx = cordova.getActivity().getApplicationContext();
+                        ZipResourceFile expansionFile = APKExpansionSupport.getAPKExpansionZipFile(ctx, mainVersion, patchVersion);
+
+                        if (null == expansionFile) {
+                            Log.e(LOG_TAG, "APKExpansionFile not found.");
+                            return;
+                        }
+
+                        // Get all file entries
+                        ZipResourceFile.ZipEntryRO[] entries = expansionFile.getAllEntries();
+
+                        JSONArray jsonArray = new JSONArray();
+
+                        for (ZipResourceFile.ZipEntryRO zipFileObject : entries) {
+                            jsonArray.put(zipFileObject.mFileName);
+                        }
+                        
+                        // Convert Hashmap to JSON Object
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, jsonArray);
+                        callbackContext.sendPluginResult(result);
+                    }
+                    catch(Exception e) {
+                        e.printStackTrace();
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
         else if(action.equals("getPackageInfo")) {
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
@@ -166,7 +199,6 @@ public class XAPKReader extends CordovaPlugin {
                             packageInfo.put("versionCode", versionCode);
                             PluginResult result = new PluginResult(PluginResult.Status.OK, packageInfo);
                             callbackContext.sendPluginResult(result);
-//                            callbackContext.error("APKExpansionFile not found.");
                             return;
                         }
 
