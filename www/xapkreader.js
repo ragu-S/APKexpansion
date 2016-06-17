@@ -1,179 +1,306 @@
-var exec = require("cordova/exec");
-var getQueue = [];
-var inProgress = 0;
+package org.apache.cordova.xapkreader;
 
-module.exports = {
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.res.AssetFileDescriptor;
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.Base64;
+import android.util.Log;
+
+import com.android.vending.expansion.zipfile.APKExpansionSupport;
+import com.android.vending.expansion.zipfile.ZipResourceFile;
+import com.google.android.vending.expansion.downloader.Helpers;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLConnection;
+
+import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.PluginResult;
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import java.util.ArrayList;
+
+import org.json.JSONObject;
+
+
+public class XAPKReader extends CordovaPlugin {
+
+    private static final String LOG_TAG = "XAPKReader";
+
+    private int mainVersion = 1;
+
+    private long mainFileSize = 0L;
+
+    private int patchVersion = 0;
+
+    private long patchFileSize = 0L;
+
+    private boolean downloadOption = true;
 
     /**
-     * Get a file immediately in expansion file
+     * Executes the request.
      *
-     * @param filename              The file name
-     * @param fileType              The file type (eg: "image/jpeg")
-     * @param successCallback       The callback to be called when the file is found.
-     *                                  successCallback()
-     * @param errorCallback         The callback to be called if there is an error.
-     *                                  errorCallback(int errorCode) - OPTIONAL
-     **/
-    getImmediate: function(filename, successCallback, errorCallback, fileType) {
-        // only for android
-        if (!navigator.userAgent.match(/Android/i)) {
-            return successCallback(filename);
-        }
-
-        if (null === filename) {
-            console.error("XAPKReader.get failure: filename parameter needed");
-            return;
-        }
-        
-        if(!fileType) fileType = "";
-
-        var context = this;
-
-        var success = function (result) {
-            if(result) {
-                successCallback(result);
-            }
-            else {
-                errorCallback("unable to read result!");
-            }
-        };
-
-        cordova.exec(success, errorCallback, "XAPKReader", "get", [filename, fileType]);
-    },
-
-    /**
-     * Adds queue to retrieve at most 10 get’s simultaneously.
-     **/               
-    processQueue:  function() {
-        while (inProgress < 10) {
-            var e = getQueue.pop();
-            if (!e) break;
-            inProgress = inProgress + 1;
-            this.getImmediate(e.filename, e.successCallback, e.errorCallBack, e.fileType);      
-        }
-    },
-    /**
-     * writeExpansionFileList
-    **/
-    setExpansionOptions: function(expansionInfo, successCallback, errorCallback) {
-        // only for android
-        if (!navigator.userAgent.match(/Android/i)) {
-            return errorCallBack("Not android");
-        }
-
-        cordova.exec(successCallback, errorCallback, "XAPKReader", "setExpansionOptions", [expansionInfo]);
-    },
-    /**
-     * Get a file in expansion file and return it as data base64 encoded
+     * This method is called from the WebView thread. To do a non-trivial amount of work, use:
+     *     cordova.getThreadPool().execute(runnable);
      *
-     * @param filename              The file name
-     * @param fileType              The file type (eg: "image/jpeg")
-     * @param successCallback       The callback to be called when the file is found.
-     *                                  successCallback()
-     * @param errorCallback         The callback to be called if there is an error.
-     *                                  errorCallback(int errorCode) - OPTIONAL
-     **/
-    get: function(filename, successCallback, errorCallBack, fileType) {
-        var self = this;
-        
-        getQueue.push({filename: filename,
-        successCallback: function (x) {
-            successCallback(x); 
-            self.getFinished();
-        },
-        errorCallBack: function(x) {
-            errorCallBack(x); 
-            self.getFinished();
-        },
-        fileType: fileType});
-        
-        this.processQueue();
-    },
-    /**
-      * Gets packageInfo for Expansion file
-    **/
-    getPackageInfo: function(successCallback, errorCallback) {
-        // only for android
-        if (!navigator.userAgent.match(/Android/i)) {
-            return errorCallBack("Not android");
-        }
-
-        cordova.exec(successCallback, errorCallback, "XAPKReader", "getPackageInfo", []);
-    },
-    /**
-     * Gets json array of expansion files
-    **/
-    getExpansionFileList: function(successCallback, errorCallback) {
-        // only for android
-        if (!navigator.userAgent.match(/Android/i)) {
-            return errorCallBack("Not android");
-        }
-
-        cordova.exec(successCallback, errorCallback, "XAPKReader", "getExpansionFileList", []);
-    },
-    /**
-     * writeExpansionFileList
-    **/
-    writeExpansionFileList: function(successCallback, errorCallback) {
-        // only for android
-        if (!navigator.userAgent.match(/Android/i)) {
-            return errorCallBack("Not android");
-        }
-
-        cordova.exec(successCallback, errorCallback, "XAPKReader", "writeExpansionFileList", []);
-    },
-    /**
-     * Progress queue termination of 10 gets
-     **/
-    getFinished: function() {
-        console.log('getfinished');
-        inProgress = inProgress - 1;
-        this.processQueue();  
-    },
-    /**
-     * Convert ArrayBuffer to URL
+     * To run on the UI thread, use:
+     *     cordova.getActivity().runOnUiThread(runnable);
      *
-     * @param arrayBuffer   ArrayBuffer to convert
-     * @param fileType      (optional) The file type (eg: "image/jpeg")
-     * @return URL          URL string
-     **/
-    arrayBufferToURL: function (arrayBuffer, fileType) {
-        var blob = this.createBlob(arrayBuffer);
-        window.URL = window.URL || window.webkitURL;
-        return window.URL.createObjectURL(blob);
-    },
-
-    /**
-     * Create Blob from data
+     * @param action          The action to execute.
+     * @param args            The exec() arguments.
+     * @param callbackContext The callback context used when calling back into JavaScript.
+     * @return                Whether the action was valid.
+     * @throws JSONException
      *
-     * @param part          ArrayBuffer, ArrayBufferView, Blob or DOMString part
-     * @param fileType      (optional) The file type (eg: "image/jpeg")
-     **/
-    createBlob: function (part, fileType) {
-        var blob;
-        try {
-            var properties = {};
-            if (fileType) {
-                properties.type = fileType;
-            }
-            blob = new Blob([part], properties);
-        }
-        catch (e) {
-            // TypeError try old constructor
-            window.BlobBuilder = window.BlobBuilder ||
-                window.WebKitBlobBuilder;
+     * @sa https://github.com/apache/cordova-android/blob/master/framework/src/org/apache/cordova/CordovaPlugin.java
+     */
+    @Override
+    public boolean execute(String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
+        final Bundle bundle = new Bundle();
 
-            if (e.name == 'TypeError' && !window.BlobBuilder) {
-                throw new Error('This platform does not support Blob type.');
-            }
+        // set defaults
+        bundle.putInt("mainVersion", mainVersion);
+        bundle.putInt("patchVersion", patchVersion);
+        bundle.putLong("mainFileSize", mainFileSize);
+        bundle.putLong("patchFileSize", patchFileSize);
+        bundle.putBoolean("downloadOption", downloadOption);
 
-            var bb = new BlobBuilder();
-            bb.append(part);
-            blob = bb.getBlob(fileType);
+        if (action.equals("setExpansionOptions")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        JSONObject expansionInfo = args.getJSONObject(0);
+                        mainVersion = expansionInfo.getInt("mainVersion");
+                        patchVersion = expansionInfo.getInt("patchVersion");
+                        mainFileSize = expansionInfo.getLong("mainFileSize");
+                        patchFileSize = expansionInfo.getLong("patchFileSize");
+                        downloadOption = expansionInfo.getBoolean("downloadOption");
+
+                        bundle.putInt("mainVersion", mainVersion);
+                        bundle.putInt("patchVersion", patchVersion);
+                        bundle.putLong("mainFileSize", mainFileSize);
+                        bundle.putLong("patchFileSize", patchFileSize);
+                        bundle.putBoolean("downloadOption", downloadOption);
+
+                        callbackContext.success("success");
+                    }
+                    catch (JSONException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+
+            return true;
         }
-        return blob;
+        else if (action.equals("get")) {
+            final String filename = args.getString(0);
+            final String contentType = args.getString(1);
+            final Context ctx = cordova.getActivity().getApplicationContext();     
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        Context context = cordova.getActivity().getApplicationContext();
+                        Intent intent = new Intent(context, XAPKDownloaderActivity.class);
+                        intent.putExtras(bundle);
+                        cordova.getActivity().startActivity(intent);
+                        // Read file
+                        PluginResult result = XAPKReader.readFile(ctx, filename, mainVersion, patchVersion, getMimeType(contentType));
+
+                        callbackContext.sendPluginResult(result);
+                    }
+                    catch(Exception e) {
+                        e.printStackTrace();
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
+        else if(action.equals("getExpansionFileList")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        Context ctx = cordova.getActivity().getApplicationContext();
+                        ZipResourceFile expansionFile = APKExpansionSupport.getAPKExpansionZipFile(ctx, mainVersion, patchVersion);
+
+                        if (null == expansionFile) {
+                            Log.e(LOG_TAG, "APKExpansionFile not found.");
+                            return;
+                        }
+
+                        // Get all file entries
+                        ZipResourceFile.ZipEntryRO[] entries = expansionFile.getAllEntries();
+
+                        JSONObject jsonFileSet = new JSONObject();
+
+                        for (ZipResourceFile.ZipEntryRO zipFileObject : entries) {
+                            // Ignore folders
+                            if(!zipFileObject.mFileName.endsWith("/")) jsonFileSet.put(zipFileObject.mFileName, zipFileObject.mFileName);
+                        }
+                        
+                        // Convert Hashmap to JSON Object
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, jsonFileSet);
+                        callbackContext.sendPluginResult(result);
+                    }
+                    catch(Exception e) {
+                        e.printStackTrace();
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
+        else if(action.equals("getPackageInfo")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    Activity appActivity = cordova.getActivity();
+                    try {
+                        PackageInfo pmInfo = appActivity.getPackageManager().getPackageInfo(appActivity.getPackageName(), 0);
+                        String versionName = pmInfo.versionName;
+                        int versionCode = pmInfo.versionCode;
+                        JSONObject packageInfo = new JSONObject();
+                        packageInfo.put("versionName", versionName);
+                        packageInfo.put("versionCode", versionCode);
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, packageInfo);
+                        callbackContext.sendPluginResult(result);
+                    }
+                    catch (PackageManager.NameNotFoundException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                    catch (JSONException e) {
+                        callbackContext.error(e.getLocalizedMessage());
+                    }
+                }
+            });
+            return true;
+        }
+        else if(action.equals("writeExpansionFileList")) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        Context ctx = cordova.getActivity().getApplicationContext();
+                        ZipResourceFile expansionFile = APKExpansionSupport.getAPKExpansionZipFile(ctx, mainVersion, patchVersion);
+
+                        if (null == expansionFile) {
+                            Log.e(LOG_TAG, "APKExpansionFile not found.");
+                            Activity appActivity = cordova.getActivity();
+                            PackageInfo pmInfo = appActivity.getPackageManager().getPackageInfo(appActivity.getPackageName(), 0);
+                            String versionName = pmInfo.versionName;
+                            int versionCode = pmInfo.versionCode;
+                            JSONObject packageInfo = new JSONObject();
+                            packageInfo.put("versionName", versionName);
+                            packageInfo.put("versionCode", versionCode);
+                            PluginResult result = new PluginResult(PluginResult.Status.OK, packageInfo);
+                            callbackContext.sendPluginResult(result);
+                            return;
+                        }
+
+                        ZipResourceFile.ZipEntryRO[] allFiles = expansionFile.getAllEntries();
+                        ArrayList list = new ArrayList();
+                        for (ZipResourceFile.ZipEntryRO entry : allFiles) list.add(entry.mFileName);
+
+                        String _filename = "EXPANSION_FILENAMES.json";
+                        File file = new File(Environment.getExternalStorageDirectory(), _filename);
+                        String _string = list.toString();
+                        FileOutputStream outputStream = new FileOutputStream(file);
+                        outputStream.write(_string.getBytes());
+                        outputStream.close();
+
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, file.getAbsolutePath());
+                        callbackContext.sendPluginResult(result);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            return true;
+        }
+        return false;
     }
 
-};
+    /**
+     * Read file in APK Expansion file.
+     *
+     * @param ctx      The context of the main Activity.
+     * @param filename The filename to read
+     * @return         PluginResult
+     */
+    private static PluginResult readFile(Context ctx, String filename, int mainVersion, int patchVersion, final int resultType) throws IOException {
+        // Get APKExpensionFile
+        ZipResourceFile expansionFile = APKExpansionSupport.getAPKExpansionZipFile(ctx, mainVersion, patchVersion);
 
+        if (null == expansionFile) {
+            Log.e(LOG_TAG, "APKExpansionFile not found.");
+            return null;
+        }
 
+        // Find file in ExpansionFile
+        String fileName = Helpers.getExpansionAPKFileName(ctx, true, mainVersion);
+        fileName = fileName.substring(0, fileName.lastIndexOf("."));
+        AssetFileDescriptor fileDescriptor = expansionFile.getAssetFileDescriptor(fileName + "/" + filename);
+
+        if (null == fileDescriptor) {
+			fileDescriptor = expansionFile.getAssetFileDescriptor(filename);
+			if (null == fileDescriptor) {
+				Log.e(LOG_TAG, "File not found (" + filename + ").");
+                return null;
+            }
+        }
+
+        // Read file
+        InputStream inputStream = fileDescriptor.createInputStream();
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int read = 0;
+        while ((read = inputStream.read(buffer, 0, buffer.length)) != -1) {
+            os.write(buffer, 0, read);
+        }
+
+        os.flush();
+
+        // get file content type
+        String contentType = URLConnection.guessContentTypeFromStream(inputStream);
+        PluginResult result;
+        try {
+            switch (resultType) {
+                case PluginResult.MESSAGE_TYPE_STRING:
+                    result = new PluginResult(PluginResult.Status.OK, os.toString("UTF-8"));
+                    break;
+                case PluginResult.MESSAGE_TYPE_ARRAYBUFFER:
+                    result = new PluginResult(PluginResult.Status.OK, os.toByteArray());
+                    break;
+                case PluginResult.MESSAGE_TYPE_BINARYSTRING:
+                    result = new PluginResult(PluginResult.Status.OK, os.toByteArray(), true);
+                    break;
+                default: // Base64.
+                    byte[] base64 = Base64.encode(os.toByteArray(), Base64.NO_WRAP);
+                    String s = "data:" + contentType + ";base64," + new String(base64, "US-ASCII");
+                    result = new PluginResult(PluginResult.Status.OK, s);
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+            result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+        }
+
+        return result;
+    }
+
+    public int getMimeType(String contentType) {
+        if(contentType.equals("application/json")) return PluginResult.MESSAGE_TYPE_STRING;
+        if(contentType.equals("application/octet-stream")) return PluginResult.MESSAGE_TYPE_ARRAYBUFFER;
+        return PluginResult.MESSAGE_TYPE_MULTIPART;
+    }
+
+}
