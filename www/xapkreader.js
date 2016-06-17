@@ -30,16 +30,11 @@ module.exports = {
         var context = this;
 
         var success = function (result) {
-            if(fileType === "application/json") {
+            if(result) {
                 successCallback(result);
-                return;
             }
-            try {
-                var url = context.arrayBufferToURL(result, fileType);
-                successCallback(url);
-            }
-            catch (e) {
-                errorCallback(e);
+            else {
+                errorCallback("unable to read result!");
             }
         };
 
