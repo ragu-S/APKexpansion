@@ -104,6 +104,7 @@ public class XAPKReader extends CordovaPlugin {
         }
         else if (action.equals("get")) {
             final String filename = args.getString(0);
+            final String contentType = args.getString(1);
             final Context ctx = cordova.getActivity().getApplicationContext();     
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
@@ -113,7 +114,8 @@ public class XAPKReader extends CordovaPlugin {
                         intent.putExtras(bundle);
                         cordova.getActivity().startActivity(intent);
                         // Read file
-                        PluginResult result = XAPKReader.readFile(ctx, filename, mainVersion, patchVersion, PluginResult.MESSAGE_TYPE_ARRAYBUFFER);
+                        PluginResult result = XAPKReader.readFile(ctx, filename, mainVersion, patchVersion, getMimeType(contentType));
+
                         callbackContext.sendPluginResult(result);
                     }
                     catch(Exception e) {
@@ -263,29 +265,40 @@ public class XAPKReader extends CordovaPlugin {
         while ((read = inputStream.read(buffer, 0, buffer.length)) != -1) {
             os.write(buffer, 0, read);
         }
+
         os.flush();
 
         // get file content type
         String contentType = URLConnection.guessContentTypeFromStream(inputStream);
-
         PluginResult result;
-        switch (resultType) {
-            case PluginResult.MESSAGE_TYPE_STRING:
-                result = new PluginResult(PluginResult.Status.OK, os.toString("UTF-8"));
-                break;
-            case PluginResult.MESSAGE_TYPE_ARRAYBUFFER:
-                result = new PluginResult(PluginResult.Status.OK, os.toByteArray());
-                break;
-            case PluginResult.MESSAGE_TYPE_BINARYSTRING:
-                result = new PluginResult(PluginResult.Status.OK, os.toByteArray(), true);
-                break;
-            default: // Base64.
-                byte[] base64 = Base64.encode(os.toByteArray(), Base64.NO_WRAP);
-                String s = "data:" + contentType + ";base64," + new String(base64, "US-ASCII");
-                result = new PluginResult(PluginResult.Status.OK, s);
+        try {
+            switch (resultType) {
+                case PluginResult.MESSAGE_TYPE_STRING:
+                    result = new PluginResult(PluginResult.Status.OK, os.toString("UTF-8"));
+                    break;
+                case PluginResult.MESSAGE_TYPE_ARRAYBUFFER:
+                    result = new PluginResult(PluginResult.Status.OK, os.toByteArray());
+                    break;
+                case PluginResult.MESSAGE_TYPE_BINARYSTRING:
+                    result = new PluginResult(PluginResult.Status.OK, os.toByteArray(), true);
+                    break;
+                default: // Base64.
+                    byte[] base64 = Base64.encode(os.toByteArray(), Base64.NO_WRAP);
+                    String s = "data:" + contentType + ";base64," + new String(base64, "US-ASCII");
+                    result = new PluginResult(PluginResult.Status.OK, s);
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+            result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
         }
 
         return result;
+    }
+
+    public int getMimeType(String contentType) {
+        if(contentType.equals("application/json")) return PluginResult.MESSAGE_TYPE_STRING;
+        return PluginResult.MESSAGE_TYPE_ARRAYBUFFER;
     }
 
 }
