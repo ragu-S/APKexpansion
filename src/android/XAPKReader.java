@@ -298,7 +298,8 @@ public class XAPKReader extends CordovaPlugin {
 
     public int getMimeType(String contentType) {
         if(contentType.equals("application/json")) return PluginResult.MESSAGE_TYPE_STRING;
-        return PluginResult.MESSAGE_TYPE_ARRAYBUFFER;
+        if(contentType.equals("application/octet-stream")) return PluginResult.MESSAGE_TYPE_ARRAYBUFFER;
+        return PluginResult.MESSAGE_TYPE_MULTIPART;
     }
 
 }
