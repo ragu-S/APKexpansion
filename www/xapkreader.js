@@ -24,10 +24,16 @@ module.exports = {
             console.error("XAPKReader.get failure: filename parameter needed");
             return;
         }
+        
+        if(!fileType) fileType = "";
 
         var context = this;
 
         var success = function (result) {
+            if(fileType === "application/json") {
+                successCallback(result);
+                return;
+            }
             try {
                 var url = context.arrayBufferToURL(result, fileType);
                 successCallback(url);
@@ -37,7 +43,7 @@ module.exports = {
             }
         };
 
-        cordova.exec(success, errorCallback, "XAPKReader", "get", [filename]);
+        cordova.exec(success, errorCallback, "XAPKReader", "get", [filename, fileType]);
     },
 
     /**
