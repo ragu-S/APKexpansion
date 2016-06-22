@@ -205,8 +205,10 @@ public class XAPKReader extends CordovaPlugin {
                         }
 
                         ZipResourceFile.ZipEntryRO[] allFiles = expansionFile.getAllEntries();
-                        ArrayList list = new ArrayList();
-                        for (ZipResourceFile.ZipEntryRO entry : allFiles) list.add(entry.mFileName);
+                        JSONObject list = new JSONObject();
+                        for (ZipResourceFile.ZipEntryRO entry : allFiles) {
+                            if(!entry.mFileName.endsWith("/")) list.put(entry.mFileName, entry.mFileName);
+                        }
 
                         String _filename = "EXPANSION_FILENAMES.json";
                         File file = new File(Environment.getExternalStorageDirectory(), _filename);
