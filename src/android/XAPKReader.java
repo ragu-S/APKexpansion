@@ -141,14 +141,16 @@ public class XAPKReader extends CordovaPlugin {
                         // Get all file entries
                         ZipResourceFile.ZipEntryRO[] entries = expansionFile.getAllEntries();
 
-                        JSONArray jsonArray = new JSONArray();
+                        JSONObject jsonFileSet = new JSONObject();
 
                         for (ZipResourceFile.ZipEntryRO zipFileObject : entries) {
-                            jsonArray.put(zipFileObject.mFileName);
+                            // Ignore folders
+                            if(!zipFileObject.mFileName.endsWith("/")) jsonFileSet.put(zipFileObject.mFileName, zipFileObject.mFileName);
                         }
                         
                         // Convert Hashmap to JSON Object
-                        PluginResult result = new PluginResult(PluginResult.Status.OK, jsonArray);
+                        PluginResult result = new PluginResult(PluginResult.Status.OK, jsonFileSet);
+
                         callbackContext.sendPluginResult(result);
                     }
                     catch(Exception e) {
